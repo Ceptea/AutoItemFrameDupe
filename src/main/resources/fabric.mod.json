@@ -12,7 +12,7 @@
 		"sources": "https://github.com/Ceptea/AutoItemFramedupe"
 	},
 	"license": "CC0-1.0",
-	"icon": "assets/autoitemframedupe/icon.png",
+	"icon": "",
 	"environment": "*",
 	"entrypoints": {
 		"main": [
