@@ -56,7 +56,6 @@ public class AutoItemFrameDupe implements ModInitializer {
 		));
 
 		ClientTickEvents.START_CLIENT_TICK.register(client -> {
-			Settings.cooldown = 300;
 
 
 
