@@ -24,39 +24,29 @@ public class AutoItemFrameDupe implements ModInitializer {
     public static final Logger LOGGER = LoggerFactory.getLogger("aifd");
 
 	boolean done = false;
-	public static boolean active;
+	public static boolean active = false;
 	public static Item target_item;
 
 	public static MinecraftClient mc;
 	public static double cooldown;
 	public void item_switch() {
-		int target_slot = -1;
+		int target_slot = Core.findItem(target_item);
 		if (mc.player.getMainHandStack().getItem() == target_item) {
 			return;
 		}
+
 		PlayerInventory inv = mc.player.getInventory();
-		for (int i =0; i<inv.main.size(); i++) {
-			Item item = inv.main.get(i).getItem();
-			if (item == target_item) {
-				target_slot = i;
-			}
-		}
-		if (target_slot == -1) {
 
-
+		if (target_slot > 8) {
+			mc.player.networkHandler.sendPacket(new PickFromInventoryC2SPacket(target_slot));
 		} else {
-			if (target_slot > 8) {
-				mc.player.networkHandler.sendPacket(new PickFromInventoryC2SPacket(target_slot));
-			} else {
-				inv.selectedSlot = target_slot;
-			}
-
+			inv.selectedSlot = target_slot;
 		}
 	}
 	@Override
 	public void onInitialize() {
 		mc = MinecraftClient.getInstance();
-		active = false;
+		Core.INSTANCE.init();
 		KeyBinding bind = KeyBindingHelper.registerKeyBinding(new KeyBinding(
 				"Enable AutoItemFrameDupe",
 				InputUtil.Type.KEYSYM,
@@ -162,7 +152,6 @@ public class AutoItemFrameDupe implements ModInitializer {
 
 
 					}
-					//nw.send(String.valueOf(item));
 				}
 			}
 		});
