@@ -95,7 +95,6 @@ public class AutoItemFrameDupe implements ModInitializer {
 						mc.interactionManager.interactEntity(mc.player,entity, Hand.MAIN_HAND);
 						if (!attackable) {
 							done = true;
-							System.out.println(item.getHeldItemStack());
 							mc.interactionManager.attackEntity(mc.player,entity);
 							((ItemFrameEntity) entity).setHeldItemStack(Items.AIR.getDefaultStack());
 
