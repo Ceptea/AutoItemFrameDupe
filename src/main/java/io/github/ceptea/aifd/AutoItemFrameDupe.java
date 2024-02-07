@@ -4,12 +4,15 @@ import net.fabricmc.api.ModInitializer;
 
 import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientTickEvents;
 import net.fabricmc.fabric.api.client.keybinding.v1.KeyBindingHelper;
-import net.fabricmc.fabric.api.client.rendering.v1.HudRenderCallback;
 import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.option.KeyBinding;
 import net.minecraft.client.util.InputUtil;
 import net.minecraft.entity.Entity;
 import net.minecraft.entity.decoration.ItemFrameEntity;
+import net.minecraft.entity.player.PlayerInventory;
+import net.minecraft.item.Item;
+import net.minecraft.item.Items;
+import net.minecraft.network.packet.c2s.play.PickFromInventoryC2SPacket;
 import net.minecraft.text.Text;
 import net.minecraft.util.Hand;
 import org.lwjgl.glfw.GLFW;
@@ -22,9 +25,37 @@ public class AutoItemFrameDupe implements ModInitializer {
 
 	boolean done = false;
 	public static boolean active;
+	public static Item target_item;
+
+	public static MinecraftClient mc;
+	public static double cooldown;
+	public void item_switch() {
+		int target_slot = -1;
+		if (mc.player.getMainHandStack().getItem() == target_item) {
+			return;
+		}
+		PlayerInventory inv = mc.player.getInventory();
+		for (int i =0; i<inv.main.size(); i++) {
+			Item item = inv.main.get(i).getItem();
+			if (item == target_item) {
+				target_slot = i;
+			}
+		}
+		if (target_slot == -1) {
+
+
+		} else {
+			if (target_slot > 8) {
+				mc.player.networkHandler.sendPacket(new PickFromInventoryC2SPacket(target_slot));
+			} else {
+				inv.selectedSlot = target_slot;
+			}
+
+		}
+	}
 	@Override
 	public void onInitialize() {
-		MinecraftClient mc = MinecraftClient.getInstance();
+		mc = MinecraftClient.getInstance();
 		active = false;
 		KeyBinding bind = KeyBindingHelper.registerKeyBinding(new KeyBinding(
 				"Enable AutoItemFrameDupe",
@@ -33,7 +64,12 @@ public class AutoItemFrameDupe implements ModInitializer {
 				"AIFD"
 
 		));
+
 		ClientTickEvents.START_CLIENT_TICK.register(client -> {
+			Settings.cooldown = 300;
+
+
+
 			if (client.player == null || client.world == null) {
 				return;
 			}
@@ -45,37 +81,62 @@ public class AutoItemFrameDupe implements ModInitializer {
 				done = false;
 				return;
 			}
-			mc.player.sendMessage(Text.of("§aAutoItemFrameDupe is Enabled"),true);
-
-			Iterable<Entity> entities = mc.world.getEntities();
-
-			for (Entity entity: entities) {
-				if (entity instanceof ItemFrameEntity) {
-
-					ItemFrameEntity item = (ItemFrameEntity) entity;
-					boolean attackable = String.valueOf(item.getHeldItemStack().getItem().toString()).contains("air");
-					mc.interactionManager.interactEntity(mc.player,entity, Hand.MAIN_HAND);
-					if (!attackable) {
-						done = true;
-						mc.interactionManager.attackEntity(mc.player,entity);
+			if (Settings.item_switch) {
+				item_switch();
+			}
+			if (Settings.item_switch && !(target_item == Items.AIR)) {
+				 mc.player.sendMessage(Text.of(String.format("§aDuping %s", target_item.toString())),true);
 
 
-					} else {
-						//BlockPos bp = entity.getBlockPos();
-//						mc.interactionManager.interactEntity(mc.player,entity,Hand.MAIN_HAND);
-						mc.interactionManager.interactEntity(mc.player,entity,Hand.MAIN_HAND);
-//						mc.interactionManager.interactEntity(mc.player,entity,Hand.MAIN_HAND);
+			} else {
+				mc.player.sendMessage(Text.of("§aAutoItemFrameDupe"),true);
+			}
 
+			if (System.currentTimeMillis() > cooldown) {
+				cooldown = System.currentTimeMillis()+Settings.cooldown;
+				for (Entity entity: mc.world.getEntities()) {
+					if (!entity.isInRange(mc.player,3,3)) {
+						continue;
+					}
+					if (entity instanceof ItemFrameEntity) {
+
+						ItemFrameEntity item = (ItemFrameEntity) entity;
+
+						boolean attackable = String.valueOf(item.getHeldItemStack().getItem().toString()).contains("air");
+						mc.interactionManager.interactEntity(mc.player,entity, Hand.MAIN_HAND);
+						if (!attackable) {
+							done = true;
+							System.out.println(item.getHeldItemStack());
+							mc.interactionManager.attackEntity(mc.player,entity);
+							((ItemFrameEntity) entity).setHeldItemStack(Items.AIR.getDefaultStack());
+
+
+						} else {
+
+							mc.interactionManager.interactEntity(mc.player,entity,Hand.MAIN_HAND);
+
+						}
 					}
 				}
 			}
+
 		});
 		ClientTickEvents.END_CLIENT_TICK.register(client -> {
 
 			if (bind.wasPressed()) {
 				active = !active;
 				if (!active) {
-					mc.player.sendMessage(Text.of("§cAutoItemFrameDupe is Disabled"),true);
+					mc.player.sendMessage(Text.of("§cAutoItemFrameDupe"),true);
+
+				} else {
+					cooldown = System.currentTimeMillis()+Settings.cooldown;
+					if (Settings.item_switch) {
+						target_item = mc.player.getMainHandStack().getItem();
+						if (target_item == Items.AIR) {
+							mc.player.sendMessage(Text.of(String.format("§aHold a item, then enable AutoItemFrameDupe.", target_item.toString())));
+							active = false;
+						}
+					}
 
 				}
 			}
